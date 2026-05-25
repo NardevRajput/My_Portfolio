@@ -1,0 +1,102 @@
+package com.nardev.portfoliobackend.jwt;
+
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+import org.springframework.beans.factory.annotation.Autowired;
+
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+
+import org.springframework.security.core.context.SecurityContextHolder;
+
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
+
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
+
+import org.springframework.stereotype.Component;
+
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
+import java.util.Collections;
+
+@Component
+public class JwtAuthFilter extends OncePerRequestFilter {
+
+        @Autowired
+        private JwtService jwtService;
+
+        @Override
+        protected void doFilterInternal(
+                        HttpServletRequest request,
+                        HttpServletResponse response,
+                        FilterChain filterChain)
+                        throws ServletException, IOException {
+
+                String path = request.getServletPath();
+
+                // Public APIs - JWT skip
+                if (path.equals("/api/contact")
+                                || path.equals("/auth/login")
+                                || path.equals("/admin/test")) {
+
+                        filterChain.doFilter(request, response);
+                        return;
+                }
+
+                String authHeader = request.getHeader("Authorization");
+
+                String token = null;
+                String username = null;
+
+                try {
+
+                        if (authHeader != null
+                                        && authHeader.startsWith("Bearer ")) {
+
+                                token = authHeader.substring(7);
+
+                                username = jwtService.extractUsername(token);
+                        }
+
+                        if (username != null
+                                        && SecurityContextHolder
+                                                        .getContext()
+                                                        .getAuthentication() == null) {
+
+                                UserDetails userDetails = new User(
+                                                username,
+                                                "",
+                                                Collections.emptyList());
+
+                                if (jwtService.validateToken(
+                                                token,
+                                                username)) {
+
+                                        UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                                                        userDetails,
+                                                        null,
+                                                        userDetails.getAuthorities());
+
+                                        authToken.setDetails(
+                                                        new WebAuthenticationDetailsSource()
+                                                                        .buildDetails(request));
+
+                                        SecurityContextHolder
+                                                        .getContext()
+                                                        .setAuthentication(authToken);
+                                }
+                        }
+
+                } catch (Exception e) {
+
+                        // Expired or invalid token - ignore and continue
+                        System.out.println("JWT Error: " + e.getMessage());
+                }
+
+                filterChain.doFilter(request, response);
+        }
+}

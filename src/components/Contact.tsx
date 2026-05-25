@@ -20,21 +20,33 @@ const Contact = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!form.name || !form.email || !form.message) {
+    if (!form.name.trim() || !form.email.trim() || !form.message.trim()) {
       toast.error("Please fill in all fields.");
       return;
     }
 
-    const nameRegex = /^[a-zA-Z\s]{3,}$/;
+    const nameRegex = /^[a-zA-Z\s]{3,50}$/;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-    if (!nameRegex.test(form.name)) {
-      toast.error("Please enter a valid name.");
+    if (!nameRegex.test(form.name.trim())) {
+      toast.error(
+        "Name must contain only letters and be 3-50 characters long."
+      );
       return;
     }
 
-    if (!emailRegex.test(form.email)) {
+    if (!emailRegex.test(form.email.trim())) {
       toast.error("Please enter a valid email address.");
+      return;
+    }
+
+    if (form.message.trim().length < 5) {
+      toast.error("Message must be at least 5 characters long.");
+      return;
+    }
+
+    if (form.message.trim().length > 500) {
+      toast.error("Message must not exceed 500 characters.");
       return;
     }
 
@@ -48,6 +60,8 @@ const Contact = () => {
         },
         body: JSON.stringify(form),
       });
+
+      const data = await response.json();
 
       if (response.ok) {
         toast.success("Message sent successfully!");
@@ -63,13 +77,22 @@ const Contact = () => {
           message: "",
         });
       } else {
-        toast.error("Failed to send message.");
+        if (response.status === 400) {
+          toast.error(
+            data.message || "Please check your input fields and try again."
+          );
+        } else if (response.status === 429) {
+          toast.error("Too many requests. Please try again later.");
+        } else {
+          toast.error(data.message || "Failed to send message.");
+        }
       }
     } catch (error) {
-      toast.error("Server error.");
+      console.error(error);
+      toast.error("Unable to connect to server.");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   const info = [
