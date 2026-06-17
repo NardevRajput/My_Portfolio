@@ -46,7 +46,13 @@ public class ContactController {
         Contact savedContact = contactRepository.save(contact);
 
         // excelService.saveToExcel(contact);
-        emailService.sendContactEmail(contact);
+
+        try {
+            emailService.sendContactEmail(contact);
+        } catch (Exception e) {
+            System.out.println("EMAIL ERROR: " + e.getMessage());
+            e.printStackTrace();
+        }
 
         return new ApiResponse<>(
                 true,
