@@ -46,7 +46,7 @@ public class ContactController {
         Contact savedContact = contactRepository.save(contact);
 
         // excelService.saveToExcel(contact);
-        // emailService.sendContactEmail(contact);
+        emailService.sendContactEmail(contact);
 
         return new ApiResponse<>(
                 true,
