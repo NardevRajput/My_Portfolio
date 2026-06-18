@@ -1,29 +1,24 @@
 package com.nardev.portfoliobackend.controller;
 
 import com.nardev.portfoliobackend.dto.ContactRequestDTO;
-
-import jakarta.validation.Valid;
-
 import com.nardev.portfoliobackend.model.Contact;
-
 import com.nardev.portfoliobackend.repository.ContactRepository;
-
 import com.nardev.portfoliobackend.response.ApiResponse;
-
 import com.nardev.portfoliobackend.service.EmailService;
 import com.nardev.portfoliobackend.service.ExcelService;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.validation.Valid;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/contact")
-// @CrossOrigin("*")
 public class ContactController {
 
+    ```
     @Autowired
     private ContactRepository contactRepository;
 
@@ -48,7 +43,9 @@ public class ContactController {
         // excelService.saveToExcel(contact);
 
         try {
+            System.out.println("Starting email send...");
             emailService.sendContactEmail(contact);
+            System.out.println("Email sent successfully");
         } catch (Exception e) {
             System.out.println("EMAIL ERROR: " + e.getMessage());
             e.printStackTrace();
@@ -62,19 +59,19 @@ public class ContactController {
 
     @GetMapping("/admin/contacts")
     public List<Contact> getAllContacts() {
-
         return contactRepository.findAll();
     }
 
-    @DeleteMapping("/admin/{id}")
-    public ApiResponse<String> deleteContact(
-            @PathVariable("id") Integer id) {
+@DeleteMapping("/admin/{id}")
+public ApiResponse<String> deleteContact(
+        @PathVariable Integer id) {
 
-        contactRepository.deleteById(id);
+    contactRepository.deleteById(id);
 
-        return new ApiResponse<>(
-                true,
-                "Contact deleted successfully",
-                null);
-    }
+    return new ApiResponse<>(
+            true,
+            "Contact deleted successfully",
+            null);
+}```
+
 }
