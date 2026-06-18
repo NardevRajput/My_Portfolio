@@ -5,7 +5,6 @@ import com.nardev.portfoliobackend.model.Contact;
 import com.nardev.portfoliobackend.repository.ContactRepository;
 import com.nardev.portfoliobackend.response.ApiResponse;
 import com.nardev.portfoliobackend.service.EmailService;
-import com.nardev.portfoliobackend.service.ExcelService;
 
 import jakarta.validation.Valid;
 
@@ -18,12 +17,8 @@ import java.util.List;
 @RequestMapping("/api/contact")
 public class ContactController {
 
-    ```
     @Autowired
     private ContactRepository contactRepository;
-
-    @Autowired
-    private ExcelService excelService;
 
     @Autowired
     private EmailService emailService;
@@ -40,15 +35,10 @@ public class ContactController {
 
         Contact savedContact = contactRepository.save(contact);
 
-        // excelService.saveToExcel(contact);
-
         try {
-            System.out.println("Starting email send...");
             emailService.sendContactEmail(contact);
-            System.out.println("Email sent successfully");
         } catch (Exception e) {
             System.out.println("EMAIL ERROR: " + e.getMessage());
-            e.printStackTrace();
         }
 
         return new ApiResponse<>(
@@ -62,16 +52,15 @@ public class ContactController {
         return contactRepository.findAll();
     }
 
-@DeleteMapping("/admin/{id}")
-public ApiResponse<String> deleteContact(
-        @PathVariable Integer id) {
+    @DeleteMapping("/admin/{id}")
+    public ApiResponse<String> deleteContact(
+            @PathVariable Integer id) {
 
-    contactRepository.deleteById(id);
+        contactRepository.deleteById(id);
 
-    return new ApiResponse<>(
-            true,
-            "Contact deleted successfully",
-            null);
-}```
-
+        return new ApiResponse<>(
+                true,
+                "Contact deleted successfully",
+                null);
+    }
 }
