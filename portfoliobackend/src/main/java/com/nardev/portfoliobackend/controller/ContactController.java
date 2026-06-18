@@ -35,11 +35,11 @@ public class ContactController {
 
         Contact savedContact = contactRepository.save(contact);
 
-        try {
-            emailService.sendContactEmail(contact);
-        } catch (Exception e) {
-            System.out.println("EMAIL ERROR: " + e.getMessage());
-        }
+        // try {
+        // emailService.sendContactEmail(contact);
+        // } catch (Exception e) {
+        // System.out.println("EMAIL ERROR: " + e.getMessage());
+        // }
 
         return new ApiResponse<>(
                 true,
