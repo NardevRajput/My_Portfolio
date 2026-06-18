@@ -9,35 +9,25 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class EmailService {
+
     @Autowired
     private JavaMailSender mailSender;
 
     public void sendContactEmail(Contact contact) {
 
-        try {
+        SimpleMailMessage message = new SimpleMailMessage();
 
-            System.out.println("Starting email send...");
+        message.setTo("nardevrajput001@gmail.com");
 
-            SimpleMailMessage message = new SimpleMailMessage();
+        message.setSubject("New Portfolio Contact Message");
 
-            message.setTo("nardevrajput001@gmail.com");
+        message.setText(
+                "Name: " + contact.getName() + "\n\n" +
+                        "Email: " + contact.getEmail() + "\n\n" +
+                        "Message:\n" + contact.getMessage());
 
-            message.setSubject("🚀 New Portfolio Contact Message");
+        mailSender.send(message);
 
-            message.setText(
-                    "Name: " + contact.getName() + "\n\n" +
-                            "Email: " + contact.getEmail() + "\n\n" +
-                            "Message:\n" + contact.getMessage());
-
-            mailSender.send(message);
-
-            System.out.println("Email sent successfully");
-
-        } catch (Exception e) {
-
-            System.out.println("EMAIL ERROR: " + e.getMessage());
-            e.printStackTrace();
-        }
+        System.out.println("Email sent successfully");
     }
-
 }
