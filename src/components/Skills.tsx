@@ -23,7 +23,7 @@ interface SkillSectionContent {
   subtitle: string;
 }
 
-const API_BASE_URL = "http://localhost:8080/api/skills";
+const API_BASE_URL = `${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/skills`;
 
 const iconMap: Record<string, LucideIcon> = {
   Code,
