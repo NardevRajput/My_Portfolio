@@ -4,7 +4,6 @@ import com.nardev.portfoliobackend.dto.ContactRequestDTO;
 import com.nardev.portfoliobackend.model.Contact;
 import com.nardev.portfoliobackend.repository.ContactRepository;
 import com.nardev.portfoliobackend.response.ApiResponse;
-import com.nardev.portfoliobackend.service.EmailService;
 
 import jakarta.validation.Valid;
 
@@ -20,9 +19,6 @@ public class ContactController {
     @Autowired
     private ContactRepository contactRepository;
 
-    @Autowired
-    private EmailService emailService;
-
     @PostMapping
     public ApiResponse<Contact> saveContact(
             @Valid @RequestBody ContactRequestDTO dto) {
@@ -35,16 +31,11 @@ public class ContactController {
 
         Contact savedContact = contactRepository.save(contact);
 
-        // try {
-        // emailService.sendContactEmail(contact);
-        // } catch (Exception e) {
-        // System.out.println("EMAIL ERROR: " + e.getMessage());
-        // }
-
         return new ApiResponse<>(
                 true,
                 "Contact saved successfully",
-                savedContact);
+                savedContact
+        );
     }
 
     @GetMapping("/admin/contacts")
@@ -61,6 +52,7 @@ public class ContactController {
         return new ApiResponse<>(
                 true,
                 "Contact deleted successfully",
-                null);
+                null
+        );
     }
 }
