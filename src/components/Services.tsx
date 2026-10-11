@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
@@ -31,7 +32,11 @@ type ServiceSectionContent = {
   subtitle?: string;
 };
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8080").replace(/\/$/, "");
+// Uses Vercel's production API URL when configured.
+// Falls back to localhost for local development.
+const API_BASE_URL = (
+  import.meta.env.VITE_API_URL || "http://localhost:8080"
+).replace(/\/$/, "");
 
 const iconMap: Record<string, LucideIcon> = {
   Globe,
@@ -52,15 +57,22 @@ const iconMap: Record<string, LucideIcon> = {
 
 const getServiceIcon = (name?: string): LucideIcon => {
   if (!name) return ServerCog;
-  return iconMap[name] || iconMap[name.charAt(0).toUpperCase() + name.slice(1)] || ServerCog;
+
+  return (
+    iconMap[name] ||
+    iconMap[name.charAt(0).toUpperCase() + name.slice(1)] ||
+    ServerCog
+  );
 };
 
 const Services = () => {
   const [services, setServices] = useState<ServiceItem[]>([]);
-  const [sectionContent, setSectionContent] = useState<ServiceSectionContent>({
-    heading: "What I Offer",
-    subtitle: "Solutions I deliver to bring your ideas to life.",
-  });
+  const [sectionContent, setSectionContent] =
+    useState<ServiceSectionContent>({
+      heading: "What I Offer",
+      subtitle: "Solutions I deliver to bring your ideas to life.",
+    });
+
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
 
@@ -73,46 +85,66 @@ const Services = () => {
 
       try {
         const [servicesResponse, contentResponse] = await Promise.all([
-          fetch(`${API_BASE_URL}/api/services`, { signal: controller.signal }),
-          fetch(`${API_BASE_URL}/api/services/content`, { signal: controller.signal }),
+          fetch(`${API_BASE_URL}/api/services`, {
+            signal: controller.signal,
+          }),
+          fetch(`${API_BASE_URL}/api/services/content`, {
+            signal: controller.signal,
+          }),
         ]);
 
         if (!servicesResponse.ok) {
-          throw new Error(`Services request failed: ${servicesResponse.status}`);
+          throw new Error(
+            `Services request failed: ${servicesResponse.status}`
+          );
         }
 
-        const serviceData = await servicesResponse.json();
+        const serviceData: ServiceItem[] = await servicesResponse.json();
+
         if (!Array.isArray(serviceData)) {
           throw new Error("Services API did not return a list.");
         }
 
         setServices(
-          serviceData.map((item: any) => ({
+          serviceData.map((item) => ({
             id: Number(item.id),
             title: String(item.title ?? ""),
-            description: String(item.description ?? item.desc ?? ""),
+            description: String(item.description ?? ""),
             icon: String(item.icon ?? "ServerCog"),
           }))
         );
 
-        // Keep the default heading/subtitle if the content endpoint is not available yet.
+        // Keep the default heading and subtitle if content is unavailable.
         if (contentResponse.ok) {
-          const contentData = await contentResponse.json();
+          const contentData: ServiceSectionContent =
+            await contentResponse.json();
+
           setSectionContent({
             heading: contentData?.heading || "What I Offer",
-            subtitle: contentData?.subtitle || "Solutions I deliver to bring your ideas to life.",
+            subtitle:
+              contentData?.subtitle ||
+              "Solutions I deliver to bring your ideas to life.",
           });
         }
       } catch (error) {
-        if (error instanceof DOMException && error.name === "AbortError") return;
+        if (
+          error instanceof DOMException &&
+          error.name === "AbortError"
+        ) {
+          return;
+        }
+
         console.error("Failed to load Services from backend:", error);
         setLoadError(true);
       } finally {
-        if (!controller.signal.aborted) setLoading(false);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
       }
     };
 
     loadServices();
+
     return () => controller.abort();
   }, []);
 
@@ -122,18 +154,25 @@ const Services = () => {
         <SectionHeading
           eyebrow="Services"
           title={sectionContent.heading || "What I Offer"}
-          description={sectionContent.subtitle || "Solutions I deliver to bring your ideas to life."}
+          description={
+            sectionContent.subtitle ||
+            "Solutions I deliver to bring your ideas to life."
+          }
         />
 
         {loading ? (
-          <p className="py-10 text-center text-sm text-muted-foreground">Loading services...</p>
+          <p className="py-10 text-center text-sm text-muted-foreground">
+            Loading services...
+          </p>
         ) : loadError && services.length === 0 ? (
           <p className="py-10 text-center text-sm text-muted-foreground">
-            Services could not be loaded. Please check that the backend is running and the API URL is configured correctly.
+            Services could not be loaded. Please check that the backend is
+            running and the API URL is configured correctly.
           </p>
         ) : services.length === 0 ? (
           <p className="py-10 text-center text-sm text-muted-foreground">
-            No services have been added yet. Add service cards from the admin dashboard.
+            No services have been added yet. Add service cards from the
+            admin dashboard.
           </p>
         ) : (
           <div className="mx-auto grid max-w-7xl grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -146,7 +185,10 @@ const Services = () => {
                   initial={{ opacity: 0, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: index * 0.08 }}
+                  transition={{
+                    duration: 0.5,
+                    delay: index * 0.08,
+                  }}
                   className="glass-card group relative w-full cursor-pointer overflow-hidden rounded-2xl p-5 transition-all duration-300 hover:-translate-y-2 hover:border-primary/40 hover:shadow-[0_0_35px_hsl(var(--primary)/0.15)] sm:p-7"
                 >
                   <div className="absolute right-0 top-0 h-32 w-32 rounded-full bg-primary/0 blur-2xl transition-all duration-300 group-hover:bg-primary/10" />
