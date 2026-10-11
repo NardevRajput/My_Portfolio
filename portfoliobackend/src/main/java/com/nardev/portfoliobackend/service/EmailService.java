@@ -2,42 +2,97 @@ package com.nardev.portfoliobackend.service;
 
 import com.nardev.portfoliobackend.model.Contact;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
+
+import java.util.List;
+import java.util.Map;
 
 @Service
 public class EmailService {
 
-    @Autowired
-    private JavaMailSender mailSender;
+    private static final String RESEND_API_URL = "https://api.resend.com/emails";
 
-    @Value("${spring.mail.username}")
+    private final RestClient restClient;
+
+    @Value("${RESEND_API_KEY}")
+    private String resendApiKey;
+
+    @Value("${RESEND_FROM_EMAIL:onboarding@resend.dev}")
     private String senderEmail;
 
+    public EmailService() {
+        this.restClient = RestClient.create();
+    }
+
     // ==========================================
-    // EXISTING CONTACT EMAIL - PRESERVED
+    // SEND EMAIL THROUGH RESEND API
+    // ==========================================
+
+    private void sendEmail(
+            String recipientEmail,
+            String subject,
+            String text) {
+
+        Map<String, Object> requestBody = Map.of(
+                "from", senderEmail,
+                "to", List.of(recipientEmail),
+                "subject", subject,
+                "text", text);
+
+        try {
+            restClient.post()
+                    .uri(RESEND_API_URL)
+                    .header("Authorization", "Bearer " + resendApiKey)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(requestBody)
+                    .retrieve()
+                    .toBodilessEntity();
+
+            System.out.println(
+                    "Email sent successfully to: " + recipientEmail);
+
+        } catch (RestClientResponseException exception) {
+
+            System.err.println("Resend API request failed.");
+            System.err.println(
+                    "HTTP status: " + exception.getStatusCode());
+
+            throw new IllegalStateException(
+                    "Unable to send email. Please try again later.",
+                    exception);
+
+        } catch (Exception exception) {
+
+            System.err.println(
+                    "Email delivery failed: "
+                            + exception.getClass().getSimpleName());
+
+            throw new IllegalStateException(
+                    "Unable to send email. Please try again later.",
+                    exception);
+        }
+    }
+
+    // ==========================================
+    // EXISTING CONTACT EMAIL
     // ==========================================
 
     public void sendContactEmail(Contact contact) {
 
-        SimpleMailMessage message = new SimpleMailMessage();
+        String subject = "New Portfolio Contact Message";
 
-        message.setFrom(senderEmail);
-        message.setTo("nardevrajput001@gmail.com");
+        String text = "Name: " + contact.getName() + "\n\n" +
+                "Email: " + contact.getEmail() + "\n\n" +
+                "Message:\n" + contact.getMessage();
 
-        message.setSubject("New Portfolio Contact Message");
-
-        message.setText(
-                "Name: " + contact.getName() + "\n\n" +
-                        "Email: " + contact.getEmail() + "\n\n" +
-                        "Message:\n" + contact.getMessage());
-
-        mailSender.send(message);
-
-        System.out.println("Contact email sent successfully");
+        sendEmail(
+                "nardevrajput001@gmail.com",
+                subject,
+                text);
     }
 
     // ==========================================
@@ -48,22 +103,19 @@ public class EmailService {
             String recipientEmail,
             String otp) {
 
-        SimpleMailMessage message = new SimpleMailMessage();
+        String subject = "Your Admin Password Reset OTP";
 
-        message.setFrom(senderEmail);
-        message.setTo(recipientEmail);
+        String text = "Hello,\n\n" +
+                "We received a request to reset your portfolio admin password.\n\n" +
+                "Your verification code is: " + otp + "\n\n" +
+                "This OTP is valid for 5 minutes.\n\n" +
+                "If you did not request a password reset, please ignore this email.\n\n" +
+                "Regards,\n" +
+                "Nardev Portfolio Security";
 
-        message.setSubject("Your Admin Password Reset OTP");
-
-        message.setText(
-                "Hello,\n\n" +
-                        "We received a request to reset your portfolio admin password.\n\n" +
-                        "Your verification code is: " + otp + "\n\n" +
-                        "This OTP is valid for 5 minutes.\n\n" +
-                        "If you did not request a password reset, please ignore this email.\n\n" +
-                        "Regards,\n" +
-                        "Nardev Portfolio Security");
-
-        mailSender.send(message);
+        sendEmail(
+                recipientEmail,
+                subject,
+                text);
     }
 }
