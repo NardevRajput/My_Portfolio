@@ -44,8 +44,8 @@ public class PasswordResetService {
     }
 
     /**
-     * Supports admin username, registered email, or registered mobile.
-     * The selected method determines where the OTP is delivered.
+     * Sends an OTP to the registered email or mobile number.
+     * The identifier can be an admin username, email, or mobile number.
      */
     @Transactional
     public Long sendOtp(String identifier, String method) {
@@ -70,10 +70,10 @@ public class PasswordResetService {
                     "Invalid verification method");
         }
 
-        // Find the account using username, email, or mobile.
+        // Find the admin account.
         Admin admin = findAdmin(normalizedIdentifier);
 
-        // Check destination details before creating an OTP.
+        // Validate the selected delivery method.
         if (normalizedMethod.equals("EMAIL")) {
 
             if (admin.getEmail() == null || admin.getEmail().isBlank()) {
@@ -91,6 +91,7 @@ public class PasswordResetService {
 
         LocalDateTime now = LocalDateTime.now();
 
+        // Prevent repeated OTP requests within 60 seconds.
         List<PasswordResetOtp> previousRequests = otpRepository.findByAdminAndUsedFalse(admin);
 
         for (PasswordResetOtp previous : previousRequests) {
@@ -113,6 +114,7 @@ public class PasswordResetService {
                 "%06d",
                 secureRandom.nextInt(1_000_000));
 
+        // Store only the OTP hash.
         PasswordResetOtp resetRequest = new PasswordResetOtp();
 
         resetRequest.setAdmin(admin);
@@ -128,14 +130,12 @@ public class PasswordResetService {
 
             if (normalizedMethod.equals("EMAIL")) {
 
-                // Deliver to the email registered for this admin.
                 emailService.sendPasswordResetOtp(
                         admin.getEmail(),
                         otp);
 
             } else {
 
-                // Deliver to the mobile registered for this admin.
                 smsService.sendPasswordResetOtp(
                         admin.getMobile(),
                         otp);
@@ -143,10 +143,31 @@ public class PasswordResetService {
 
         } catch (RuntimeException exception) {
 
+            // Mark the failed OTP request as unusable.
             saved.setUsed(true);
             otpRepository.save(saved);
 
-            // Keep the original exception available in server logs.
+            // Log the actual delivery error for Render debugging.
+            System.err.println(
+                    "==============================================");
+
+            System.err.println(
+                    "PASSWORD RESET OTP DELIVERY FAILED");
+
+            System.err.println(
+                    "Delivery method: " + normalizedMethod);
+
+            System.err.println(
+                    "Exception type: " + exception.getClass().getName());
+
+            System.err.println(
+                    "Exception message: " + exception.getMessage());
+
+            exception.printStackTrace();
+
+            System.err.println(
+                    "==============================================");
+
             throw new IllegalStateException(
                     "Unable to send OTP. Check the selected delivery method configuration.",
                     exception);
@@ -156,7 +177,7 @@ public class PasswordResetService {
     }
 
     /**
-     * Finds an admin by username, email, or mobile number.
+     * Finds an admin using their username, email, or mobile number.
      */
     private Admin findAdmin(String identifier) {
 
@@ -223,11 +244,11 @@ public class PasswordResetService {
             throw new IllegalArgumentException("Invalid OTP");
         }
 
-        // OTP is single-use after successful verification.
+        // OTP can only be used once.
         request.setUsed(true);
         request.setVerifiedAt(now);
 
-        // Generate a cryptographically secure reset token.
+        // Generate a secure reset token.
         byte[] randomBytes = new byte[32];
         secureRandom.nextBytes(randomBytes);
 
@@ -265,7 +286,7 @@ public class PasswordResetService {
 
         LocalDateTime now = LocalDateTime.now();
 
-        // Find the matching, verified, unexpired reset token.
+        // Find the matching verified and unexpired reset token.
         List<PasswordResetOtp> requests = otpRepository.findAll();
 
         PasswordResetOtp matched = requests.stream()
@@ -284,11 +305,11 @@ public class PasswordResetService {
 
         Admin admin = matched.getAdmin();
 
-        // Always save the new password as a BCrypt hash.
+        // Save the password as a BCrypt hash.
         admin.setPassword(passwordEncoder.encode(newPassword));
         adminRepository.save(admin);
 
-        // Make the reset token single-use.
+        // Make the reset token unusable after the password changes.
         matched.setResetTokenHash(null);
         matched.setResetTokenExpiresAt(null);
         matched.setVerifiedAt(null);
@@ -297,7 +318,7 @@ public class PasswordResetService {
     }
 
     /**
-     * Creates a SHA-256 hash for OTPs and reset tokens.
+     * Generates a SHA-256 hash for OTPs and reset tokens.
      */
     private String sha256(String value) {
 
