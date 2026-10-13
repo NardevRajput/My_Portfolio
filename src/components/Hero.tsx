@@ -1,6 +1,5 @@
 
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 
 import {
   Github,
@@ -99,114 +98,99 @@ const Hero = () => {
     instagram: "https://instagram.com",
   });
 
-  const fetchManagedSection = async (endpoint: "mindset" | "vision") => {
-    const response = await fetch(`${API_URL}/api/${endpoint}`);
-    if (!response.ok) {
-      throw new Error(`${endpoint} request failed: ${response.status}`);
-    }
-    return response.json();
-  };
-
-  const { data: mindsetData } = useQuery({
-    queryKey: ["managed-section", "mindset"],
-    queryFn: () => fetchManagedSection("mindset"),
-  });
-
-  const { data: visionData } = useQuery({
-    queryKey: ["managed-section", "vision"],
-    queryFn: () => fetchManagedSection("vision"),
-  });
-
-  const { data: homeData } = useQuery({
-    queryKey: ["home-content"],
-    queryFn: async () => {
-      const response = await fetch(`${API_URL}/api/home/content`);
-      if (!response.ok) {
-        throw new Error(`Home content request failed: ${response.status}`);
+  useEffect(() => {
+    const controller = new AbortController();
+    const loadManagedSection = async (
+      endpoint: "mindset" | "vision",
+      setContent: (value: (current: EditableSection) => EditableSection) => void,
+      setCards: (value: EditableCard[]) => void,
+    ) => {
+      try {
+        const response = await fetch(`${API_URL}/api/${endpoint}`, {
+          method: "GET",
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        if (!response.ok) throw new Error(`${endpoint} request failed: ${response.status}`);
+        const data = await response.json();
+        if (data?.content) {
+          setContent((current) => ({
+            eyebrow: data.content.eyebrow ?? current.eyebrow,
+            heading: data.content.heading ?? data.content.subheading ?? data.content.title ?? current.heading,
+            description: data.content.description ?? current.description,
+          }));
+        }
+        if (Array.isArray(data?.cards)) setCards(data.cards);
+      } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") return;
+        console.error(`Could not load ${endpoint} content; using defaults.`, error);
       }
-      return response.json();
-    },
-  });
-
-  const { data: heroImageBlob } = useQuery({
-    queryKey: ["home-hero-image"],
-    queryFn: async () => {
-      const response = await fetch(`${API_URL}/api/home/hero-image`);
-      if (!response.ok) {
-        throw new Error(`Hero image request failed: ${response.status}`);
-      }
-
-      const blob = await response.blob();
-      if (!blob.type.startsWith("image/")) {
-        throw new Error("The hero image endpoint did not return an image.");
-      }
-      return blob;
-    },
-  });
-
-  // Convert the cached image Blob into a browser URL and clean it up on change/unmount.
-  useEffect(() => {
-    if (!heroImageBlob) return;
-
-    const objectUrl = URL.createObjectURL(heroImageBlob);
-    setHeroImage(objectUrl);
-
-    return () => URL.revokeObjectURL(objectUrl);
-  }, [heroImageBlob]);
+    };
+    void loadManagedSection("mindset", setMindsetContent, setMindsetCards);
+    void loadManagedSection("vision", setVisionContent, setVisionCards);
+    return () => controller.abort();
+  }, [API_URL]);
 
   useEffect(() => {
-    if (!mindsetData) return;
+    const controller = new AbortController();
+    let objectUrl: string | null = null;
 
-    if (mindsetData.content) {
-      setMindsetContent((current) => ({
-        eyebrow: mindsetData.content.eyebrow ?? current.eyebrow,
-        heading:
-          mindsetData.content.heading ??
-          mindsetData.content.subheading ??
-          mindsetData.content.title ??
-          current.heading,
-        description: mindsetData.content.description ?? current.description,
-      }));
-    }
+    fetch(`${API_URL}/api/home/content`, {
+      method: "GET",
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Home content request failed: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((data) => {
+        setHomeContent((current) => ({
+          heroTitle: data.heroTitle ?? current.heroTitle,
+          heroRole: data.heroRole ?? current.heroRole,
+          heroDescription: data.heroDescription ?? current.heroDescription,
+          resumeUrl: data.resumeUrl ?? current.resumeUrl,
+          linkedin: data.linkedin ?? current.linkedin,
+          github: data.github ?? current.github,
+          instagram: data.instagram ?? current.instagram,
+        }));
+      })
+      .catch((error: unknown) => {
+        if (error instanceof Error && error.name === "AbortError") return;
+        console.error("Could not load saved Home content; using default content.", error);
+      });
 
-    if (Array.isArray(mindsetData.cards)) {
-      setMindsetCards(mindsetData.cards);
-    }
-  }, [mindsetData]);
+    fetch(`${API_URL}/api/home/hero-image`, {
+      method: "GET",
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Hero image request failed: ${response.status}`);
+        }
+        return response.blob();
+      })
+      .then((blob) => {
+        if (!blob.type.startsWith("image/")) {
+          throw new Error("The hero image endpoint did not return an image.");
+        }
 
-  useEffect(() => {
-    if (!visionData) return;
+        objectUrl = URL.createObjectURL(blob);
+        setHeroImage(objectUrl);
+      })
+      .catch((error: unknown) => {
+        if (error instanceof Error && error.name === "AbortError") return;
+        console.error("Could not load the saved hero image; using the default portrait.", error);
+      });
 
-    if (visionData.content) {
-      setVisionContent((current) => ({
-        eyebrow: visionData.content.eyebrow ?? current.eyebrow,
-        heading:
-          visionData.content.heading ??
-          visionData.content.subheading ??
-          visionData.content.title ??
-          current.heading,
-        description: visionData.content.description ?? current.description,
-      }));
-    }
-
-    if (Array.isArray(visionData.cards)) {
-      setVisionCards(visionData.cards);
-    }
-  }, [visionData]);
-
-  useEffect(() => {
-    if (!homeData) return;
-
-    setHomeContent((current) => ({
-      heroTitle: homeData.heroTitle ?? current.heroTitle,
-      heroRole: homeData.heroRole ?? current.heroRole,
-      heroDescription: homeData.heroDescription ?? current.heroDescription,
-      resumeUrl: homeData.resumeUrl ?? current.resumeUrl,
-      linkedin: homeData.linkedin ?? current.linkedin,
-      github: homeData.github ?? current.github,
-      instagram: homeData.instagram ?? current.instagram,
-    }));
-  }, [homeData]);
+    return () => {
+      controller.abort();
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [API_URL]);
 
   return (
     <>
