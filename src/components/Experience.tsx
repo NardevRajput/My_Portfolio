@@ -9,7 +9,9 @@ type ExperienceItem = {
   company: string;
   duration?: string;
   location?: string;
-  points: string[] | string;
+  period?: string;
+  points?: string[] | string;
+  description?: string;
 };
 
 type ExperienceSettings = {
@@ -61,67 +63,125 @@ const defaultItems: ExperienceItem[] = [
   },
 ];
 
-const normalizePoints = (points: ExperienceItem["points"]): string[] => {
-  if (Array.isArray(points)) return points.filter((point) => Boolean(point?.trim()));
+const normalizePoints = (
+  points: ExperienceItem["points"]
+): string[] => {
+  if (Array.isArray(points)) {
+    return points
+      .filter(
+        (point): point is string =>
+          typeof point === "string" && Boolean(point.trim())
+      )
+      .map((point) => point.trim());
+  }
+
   if (typeof points === "string") {
     return points
       .split(/\r?\n/)
       .map((point) => point.replace(/^[\s•\-▹]+/, "").trim())
       .filter(Boolean);
   }
+
   return [];
 };
 
 const Experience = () => {
   const [items, setItems] = useState<ExperienceItem[]>(defaultItems);
-  const [settings, setSettings] = useState<ExperienceSettings>(defaultSettings);
+  const [settings, setSettings] =
+    useState<ExperienceSettings>(defaultSettings);
 
   useEffect(() => {
     const controller = new AbortController();
 
+    // Load experience cards from the backend.
     const loadExperience = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/api/experience`, {
-          headers: { Accept: "application/json" },
-          signal: controller.signal,
-        });
+        const response = await fetch(
+          `${API_BASE_URL}/api/experience`,
+          {
+            method: "GET",
+            headers: {
+              Accept: "application/json",
+            },
+            signal: controller.signal,
+          }
+        );
 
         if (!response.ok) {
-          throw new Error(`Experience request failed (${response.status})`);
+          throw new Error(
+            `Experience request failed (${response.status})`
+          );
         }
 
         const data: unknown = await response.json();
+
         if (Array.isArray(data)) {
           setItems(data as ExperienceItem[]);
         }
       } catch (error) {
-        if (error instanceof Error && error.name !== "AbortError") {
-          console.error("Unable to load experience records:", error);
+        if (
+          error instanceof Error &&
+          error.name !== "AbortError"
+        ) {
+          console.error(
+            "Unable to load experience records:",
+            error
+          );
         }
       }
     };
 
+    // Load section heading and description from the backend.
     const loadSettings = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/api/experience/settings`, {
-          headers: { Accept: "application/json" },
-          signal: controller.signal,
-        });
+        const response = await fetch(
+          `${API_BASE_URL}/api/experience/settings`,
+          {
+            method: "GET",
+            headers: {
+              Accept: "application/json",
+            },
+            signal: controller.signal,
+          }
+        );
 
         if (!response.ok) {
-          throw new Error(`Experience settings request failed (${response.status})`);
+          throw new Error(
+            `Experience settings request failed (${response.status})`
+          );
         }
 
-        const data = (await response.json()) as Partial<ExperienceSettings>;
+        const data =
+          (await response.json()) as Partial<ExperienceSettings>;
+
         setSettings({
-          eyebrow: data.eyebrow?.trim() || defaultSettings.eyebrow,
-          title: data.title?.trim() || defaultSettings.title,
-          description: data.description?.trim() || defaultSettings.description,
+          eyebrow:
+            typeof data.eyebrow === "string" &&
+            data.eyebrow.trim()
+              ? data.eyebrow.trim()
+              : defaultSettings.eyebrow,
+
+          title:
+            typeof data.title === "string" &&
+            data.title.trim()
+              ? data.title.trim()
+              : defaultSettings.title,
+
+          description:
+            typeof data.description === "string" &&
+            data.description.trim()
+              ? data.description.trim()
+              : defaultSettings.description,
         });
       } catch (error) {
-        if (error instanceof Error && error.name !== "AbortError") {
-          // Keep the existing heading if the settings endpoint is not created yet.
-          console.error("Unable to load experience section settings:", error);
+        if (
+          error instanceof Error &&
+          error.name !== "AbortError"
+        ) {
+          console.error(
+            "Unable to load experience section settings:",
+            error
+          );
         }
       }
     };
@@ -129,11 +189,16 @@ const Experience = () => {
     void loadExperience();
     void loadSettings();
 
-    return () => controller.abort();
+    return () => {
+      controller.abort();
+    };
   }, []);
 
   return (
-    <section id="experience" className="section-padding bg-muted/20">
+    <section
+      id="experience"
+      className="section-padding bg-muted/20"
+    >
       <div className="container mx-auto px-3 sm:px-6">
         <SectionHeading
           eyebrow={settings.eyebrow}
@@ -151,15 +216,25 @@ const Experience = () => {
 
             <div className="space-y-10">
               {items.map((item, index) => {
-                const points = normalizePoints(item.points);
+                const points = normalizePoints(
+                  item.points ?? item.description
+                );
+
+                const duration = item.duration ?? item.period;
 
                 return (
                   <motion.div
-                    key={item.id ?? `${item.company}-${item.role}-${index}`}
+                    key={
+                      item.id ??
+                      `${item.company}-${item.role}-${index}`
+                    }
                     initial={{ opacity: 0, y: 30 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
-                    transition={{ duration: 0.5, delay: index * 0.15 }}
+                    transition={{
+                      duration: 0.5,
+                      delay: index * 0.15,
+                    }}
                     className="relative"
                   >
                     <div className="absolute left-0 top-6 w-6 h-6 rounded-full bg-gradient-primary ring-4 ring-background z-10" />
@@ -175,12 +250,14 @@ const Experience = () => {
                             <h3 className="font-display font-bold text-2xl sm:text-lg leading-tight break-words">
                               {item.role}
                             </h3>
+
                             <p className="text-primary text-base sm:text-sm font-medium break-words">
                               {item.company}
                             </p>
-                            {(item.duration || item.location) && (
+
+                            {(duration || item.location) && (
                               <p className="text-sm text-muted-foreground mt-1">
-                                {[item.duration, item.location]
+                                {[duration, item.location]
                                   .filter(Boolean)
                                   .join(" • ")}
                               </p>
@@ -195,7 +272,10 @@ const Experience = () => {
                                 key={`${item.id}-${pointIndex}`}
                                 className="text-base sm:text-sm text-muted-foreground flex gap-3 leading-relaxed"
                               >
-                                <span className="text-primary mt-1 shrink-0">▹</span>
+                                <span className="text-primary mt-1 shrink-0">
+                                  ▹
+                                </span>
+
                                 <span>{point}</span>
                               </li>
                             ))}

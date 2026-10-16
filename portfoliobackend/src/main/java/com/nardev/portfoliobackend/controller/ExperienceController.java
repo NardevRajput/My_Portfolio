@@ -1,7 +1,9 @@
 package com.nardev.portfoliobackend.controller;
 
 import com.nardev.portfoliobackend.model.Experience;
+import com.nardev.portfoliobackend.model.ExperienceSettings;
 import com.nardev.portfoliobackend.service.ExperienceService;
+import com.nardev.portfoliobackend.service.ExperienceSettingsService;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,9 +21,14 @@ import java.util.List;
 public class ExperienceController {
 
     private final ExperienceService experienceService;
+    private final ExperienceSettingsService experienceSettingsService;
 
-    public ExperienceController(ExperienceService experienceService) {
+    public ExperienceController(
+            ExperienceService experienceService,
+            ExperienceSettingsService experienceSettingsService) {
+
         this.experienceService = experienceService;
+        this.experienceSettingsService = experienceSettingsService;
     }
 
     // Get all experiences
@@ -29,6 +36,23 @@ public class ExperienceController {
     public ResponseEntity<List<Experience>> getAllExperiences() {
         return ResponseEntity.ok(
                 experienceService.getAllExperiences());
+    }
+
+    // Get Experience section settings
+    // IMPORTANT: Keep this endpoint separate from /{id}.
+    @GetMapping("/settings")
+    public ResponseEntity<ExperienceSettings> getSettings() {
+        return ResponseEntity.ok(
+                experienceSettingsService.getSettings());
+    }
+
+    // Update Experience section settings
+    @PutMapping("/settings")
+    public ResponseEntity<ExperienceSettings> updateSettings(
+            @RequestBody ExperienceSettings settings) {
+
+        return ResponseEntity.ok(
+                experienceSettingsService.updateSettings(settings));
     }
 
     // Get experience by ID
