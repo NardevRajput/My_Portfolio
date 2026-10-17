@@ -54,7 +54,9 @@ public class ChatController {
 
         try {
             // Generate the chatbot response.
-            String reply = chatService.chat(message);
+            String reply = chatService.chat(
+                    message,
+                    request.getConversationId());
 
             // Handle empty responses.
             if (reply == null || reply.trim().isEmpty()) {
