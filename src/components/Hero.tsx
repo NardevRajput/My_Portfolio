@@ -16,7 +16,6 @@ import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 
-import portrait from "@/assets/nardev-portrait.jpg";
 import { TypeAnimation } from "react-type-animation";
 
 const socials = [
@@ -71,7 +70,7 @@ const focusAreas = [
 
 const Hero = () => {
   const API_URL = (import.meta.env.VITE_API_URL || "http://localhost:8080").replace(/\/$/, "");
-  const [heroImage, setHeroImage] = useState<string>(portrait);
+  const [heroImage, setHeroImage] = useState<string>("");
 
   type EditableSection = { eyebrow?: string; heading?: string; description?: string; title?: string; subheading?: string };
   type EditableCard = { id?: number | string; title: string; description: string; icon?: string };
@@ -183,7 +182,7 @@ const Hero = () => {
       })
       .catch((error: unknown) => {
         if (error instanceof Error && error.name === "AbortError") return;
-        console.error("Could not load the saved hero image; using the default portrait.", error);
+        console.error("Could not load the saved hero image.", error);
       });
 
     return () => {
@@ -217,13 +216,15 @@ const Hero = () => {
           >
             {/* Large open image area: no frame, crop, background, ring, or grayscale filter */}
             <div className="flex h-[52vh] min-h-[360px] w-full items-center justify-center sm:h-[62vh] sm:min-h-[440px] lg:h-[calc(100vh-8rem)] lg:min-h-[560px] lg:max-h-[850px]">
-              <img
-                src={heroImage}
-                alt="Nardev Rajput, full-body portrait"
-                width={1200}
-                height={1600}
-                className="block h-full w-full object-contain object-center lg:object-left"
-              />
+              {heroImage && (
+                <img
+                  src={heroImage}
+                  alt="Nardev Rajput, full-body portrait"
+                  width={1200}
+                  height={1600}
+                  className="block h-full w-full object-contain object-center lg:object-left"
+                />
+              )}
             </div>
           </motion.div>
 
